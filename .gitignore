@@ -33,23 +33,6 @@ dist/
 mlruns/
 
 # ----------------------
-# Data (usually large)
-# ----------------------
-data/*
-!data/.gitkeep
-
-# ----------------------
-# Models / checkpoints
-# ----------------------
-models/*
-!models/.gitkeep
-
-# ----------------------
-# Logs
-# ----------------------
-*.log
-
-# ----------------------
 # Environment variables
 # ----------------------
 .env
@@ -87,3 +70,7 @@ htmlcov/
 mlflow.db
 mlflow.db
 mlflow.db
+
+# ----------------------
+# pdf
+*.pdf

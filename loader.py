@@ -1,19 +1,19 @@
 import re
 from dataclasses import dataclass
 from typing import List
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-# Map filenames to book titles
 BOOK_TITLES = {
-    "hp1.txt": "Harry Potter and the Philosopher's Stone",
-    "hp2.txt": "Harry Potter and the Chamber of Secrets",
-    "hp3.txt": "Harry Potter and the Prisoner of Azkaban",
-    "hp4.txt": "Harry Potter and the Goblet of Fire",
-    "hp5.txt": "Harry Potter and the Order of the Phoenix",
-    "hp6.txt": "Harry Potter and the Half-Blood Prince",
-    "hp7.txt": "Harry Potter and the Deathly Hallows",
+    "HP1.txt": "Harry Potter and the Philosopher's Stone",
+    "HP2.txt": "Harry Potter and the Chamber of Secrets",
+    "HP3.txt": "Harry Potter and the Prisoner of Azkaban",
+    "HP4.txt": "Harry Potter and the Goblet of Fire",
+    "HP5.txt": "Harry Potter and the Order of the Phoenix",
+    "HP6.txt": "Harry Potter and the Half-Blood Prince",
+    "HP7.txt": "Harry Potter and the Deathly Hallows",
 }
 
-# Data structure for chapters
+
 @dataclass
 class TextChunk:
     text: str
@@ -22,7 +22,6 @@ class TextChunk:
     chapter_title: str
 
 
-# Regex to match different chapter formats
 CHAPTER_PATTERN = re.compile(
     r'(?i)^chapter\s+(\w+)\s*[:\-\s]*(.*)$',
     re.MULTILINE
@@ -30,8 +29,6 @@ CHAPTER_PATTERN = re.compile(
 
 
 def parse_book(filepath: str, book_title: str) -> List[TextChunk]:
-    """Split a book into chapters and return labelled chunks."""
-
     with open(filepath, "r", encoding="utf-8") as f:
         text = f.read()
 
@@ -44,14 +41,12 @@ def parse_book(filepath: str, book_title: str) -> List[TextChunk]:
 
         start = match.end()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-
         chapter_text = text[start:end].strip()
 
-        # Try to convert chapter number
         try:
             chapter_num = int(chapter_num_str)
         except ValueError:
-            chapter_num = i + 1  # fallback
+            chapter_num = i + 1
 
         chunks.append(
             TextChunk(
@@ -66,21 +61,16 @@ def parse_book(filepath: str, book_title: str) -> List[TextChunk]:
 
 
 def load_all_books(data_dir: str = "data/") -> List[TextChunk]:
-    """Load all books and parse them into chapters."""
-
     all_chunks = []
 
     for filename, title in BOOK_TITLES.items():
         path = f"{data_dir}{filename}"
         print(f"Loading: {title}")
-
-        book_chunks = parse_book(path, title)
-        all_chunks.extend(book_chunks)
+        all_chunks.extend(parse_book(path, title))
 
     print(f"Total chapters parsed: {len(all_chunks)}")
     return all_chunks
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=500,
@@ -90,8 +80,6 @@ splitter = RecursiveCharacterTextSplitter(
 
 
 def chunk_book_chapters(chapters):
-    """Split chapters into smaller chunks, preserving metadata."""
-
     all_docs = []
     all_metas = []
     all_ids = []
@@ -101,7 +89,6 @@ def chunk_book_chapters(chapters):
 
         for j, sub in enumerate(sub_chunks):
             all_docs.append(sub)
-
             all_metas.append({
                 "book": ch.book,
                 "chapter_number": ch.chapter_number,
@@ -109,10 +96,8 @@ def chunk_book_chapters(chapters):
                 "chunk_index": j
             })
 
-            # Create unique ID
             safe_book = ch.book.replace(" ", "_").replace("'", "")
-            chunk_id = f"{safe_book}_ch{ch.chapter_number}_p{j}"
-            all_ids.append(chunk_id)
+            all_ids.append(f"{safe_book}_ch{ch.chapter_number}_p{j}")
 
     print(f"Total chunks created: {len(all_docs)}")
     return all_docs, all_metas, all_ids

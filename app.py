@@ -1,41 +1,83 @@
-import chromadb
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+import streamlit as st
+from rag import load_collection, ask_owl
+import ollama
 
-EMBED_MODEL = "all-MiniLM-L6-v2"
-
-embedding_fn = SentenceTransformerEmbeddingFunction(
-    model_name=EMBED_MODEL
+st.set_page_config(
+    page_title="The Know-It Owl",
+    page_icon="🦉"
 )
 
+st.title("🦉 The Know-It Owl")
+st.caption("An enchanted owl of extraordinary erudition.")
 
-def build_vector_store(docs, metas, ids, persist_dir="owl_db"):
-    """
-    Build and persist a ChromaDB collection from chunked documents.
-    """
+# Load collection once
+@st.cache_resource
+def get_collection():
+    return load_collection("owl_db")
 
-    client = chromadb.PersistentClient(path=persist_dir)
+collection = get_collection()
 
-    # Delete existing collection so re-indexing stays clean
-    try:
-        client.delete_collection("harry_potter")
-    except Exception:
-        pass
+# Session state
+if "history" not in st.session_state:
+    st.session_state.history = []
 
-    collection = client.create_collection(
-        name="harry_potter",
-        embedding_function=embedding_fn,
-        metadata={"hnsw:space": "cosine"}
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Render messages
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# Input
+if prompt := st.chat_input("Ask the owl about the Wizarding World..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+        placeholder = st.empty()
+        full_response = ""
+
+        # 🔥 RAG retrieval first
+        answer, sources = ask_owl(
+            query=prompt,
+            collection=collection,
+            history=st.session_state.history
+        )
+
+        # 🔥 STREAMING (simulate token flow)
+        for token in answer.split():
+            full_response += token + " "
+            placeholder.markdown(full_response + "▌")
+
+        # Build sources block
+        seen = set()
+        citations = []
+
+        for _, meta, _ in sources:
+            key = (meta["book"], meta["chapter_number"])
+            if key not in seen:
+                seen.add(key)
+                citations.append(
+                    f"- **{meta['book']}**, Chapter {meta['chapter_number']}: {meta['chapter_title']}"
+                )
+
+        if citations:
+            full_response += "\n\n**Sources consulted:**\n" + "\n".join(citations)
+
+        placeholder.markdown(full_response)
+
+    st.session_state.messages.append(
+        {"role": "assistant", "content": full_response}
     )
 
-    batch_size = 500
+# Sidebar
+with st.sidebar:
+    st.header("Settings")
 
-    for i in range(0, len(docs), batch_size):
-        collection.add(
-            documents=docs[i:i + batch_size],
-            metadatas=metas[i:i + batch_size],
-            ids=ids[i:i + batch_size]
-        )
-        print(f"Indexed {min(i + batch_size, len(docs))}/{len(docs)} chunks")
-
-    print(f"Vector store built at: {persist_dir}")
-    return collection
+    if st.button("Clear Conversation"):
+        st.session_state.messages = []
+        st.session_state.history = []
+        st.rerun
