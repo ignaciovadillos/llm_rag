@@ -74,3 +74,6 @@ mlflow.db
 # ----------------------
 # pdf
 *.pdf
+
+# Heavy files in the owl_db folder
+owl_db/*
