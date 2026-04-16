@@ -77,3 +77,10 @@ mlflow.db
 
 # Heavy files in the owl_db folder
 owl_db/*
+
+# Text files in the data folder
+data/*.txt
+
+*.png
+*.zip
+*.codex
